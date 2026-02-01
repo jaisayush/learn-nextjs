@@ -6,8 +6,10 @@
 
 export default function ShopLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -35,7 +37,12 @@ export default function ShopLayout({
           </div>
         </div>
       </div>
-      <main className="max-w-5xl mx-auto">{children}</main>
+      <main className="max-w-5xl mx-auto">
+        {children}
+        {/* CONCEPT: Parallel Route Slot */}
+        {/* This will render 'app/(shop)/@modal/page.tsx' (or interceptor) */}
+        {modal}
+      </main>
     </div>
   );
 }

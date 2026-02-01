@@ -1,5 +1,7 @@
 import { products } from "../../../_lib/data";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
+import BuyButton from "@/components/BuyButton";
 
 // CONCEPT: Dynamic Routes
 // The folder '[slug]' is a Dynamic Route.
@@ -10,11 +12,41 @@ import { notFound } from "next/navigation";
 // We must await it before using the properties.
 type Props = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function ProductDetail({ params }: Props) {
-  // 1. Await the params to get the slug
+// CONCEPT: Dynamic Metadata
+// Since the title depends on the product data, we cannot use a static object.
+// We export 'generateMetadata' which receives the same 'params' as the page.
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // 1. Await params (just like in the component)
   const { slug } = await params;
+
+  // 2. Fetch data (Next.js automatically dedupes requests if we used fetch())
+  const product = products.find((p) => p.slug === slug);
+
+  if (!product) {
+    return {
+      title: "Product Not Found",
+    };
+  }
+
+  return {
+    title: `${product.name} | NextStore`,
+    description: product.description,
+  };
+}
+
+export default async function ProductDetail({ params, searchParams }: Props) {
+  // 1. Await params & searchParams
+  const { slug } = await params;
+  const { error } = await searchParams;
+
+  // VERIFICATION: Trigger error via URL
+  // Visit /products/iphone?error=true to test error.tsx
+  if (error === "true") {
+    throw new Error("Boom! triggered by ?error=true");
+  }
 
   // 2. Fetch the data
   const product = products.find((p) => p.slug === slug);
@@ -50,9 +82,12 @@ export default async function ProductDetail({ params }: Props) {
           </span>
         </div>
 
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-blue-200 transform hover:-translate-y-0.5">
-          Add to Cart
-        </button>
+        <div className="flex gap-4">
+          <button className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3 rounded-lg font-semibold transition-all">
+            Add to Cart
+          </button>
+          <BuyButton />
+        </div>
       </div>
     </div>
   );

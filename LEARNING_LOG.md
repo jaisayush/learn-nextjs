@@ -1,51 +1,196 @@
-# Next.js Learning Log
+# Next.js Learning Log (The Angular Developer's Guide)
 
-This document tracks our daily progress. For each day, we record **What** we built, **How** we built it, and **Why** (the deep concept).
+This guide is designed for an Angular developer to learn Next.js. It maps every Next.js concept to its Angular equivalent.
 
-## Day 1: Routing & Layouts
+---
 
-**Goal**: Build the core structure of the Product Viewer ("Amazon Lite").
+## Day 1: Core Routing & Layouts
 
 ### 1. Route Groups `(folder)`
 
+> **Angular Equivalent**: Lazy Loaded Modules with specific layouts (e.g., `ShopModule`, `AuthModule`).
+
 - **What**: We organized our app into `(marketing)` and `(shop)` folders.
-- **How**: Surrounded folder names with parenthesis `()`. Moved `page.tsx` into `(marketing)`.
-- **Deep Dive**:
-  - In standard file-system routing, every folder segment becomes part of the URL path (e.g., `app/shop/products` -> `/shop/products`).
-  - **Route Groups** allow you to break out of this rule. `app/(shop)/products` maps to `/products`.
-  - **Why it matters**: It lets you organize code logically (e.g., keeping marketing pages separate from app pages) without introducing ugly URLs like `/marketing/home` or `/shop/products`. It also allows different **Root Layouts** for different groups (though we are using one Root Layout here).
+- **Why**: To keep code organized WITHOUT changing the URL. `app/(shop)/products` is still just `/products`.
+- **Files**:
+  - [app/(marketing)/page.tsx](<./app/(marketing)/page.tsx>) (Home Page)
+  - [app/(shop)/layout.tsx](<./app/(shop)/layout.tsx>) (Shop Layout)
 
-### 2. Private Folders `_folder`
+### 2. Layout Persistence
 
-- **What**: We created `_lib` for our safe data files.
-- **How**: Added an underscore `_` prefix to the folder name.
-- **Deep Dive**:
-  - Next.js treats every folder in `app` as a potential route.
-  - If you want to keep helper functions, components, or data files _co-located_ with your pages, you need a way to tell Next.js "This is NOT a page".
-  - **Why it matters**: Safety. If you named it `lib/data.ts`, a user visiting `/lib` might get an error or a 404, but it's cleaner to explicitly exclude it from the router entirely. It establishes a clear boundary between "Routing Code" and "Implementation Code".
+> **Angular Equivalent**: A parent `<router-outlet>` component that stays alive while children change.
 
-### 3. Layout Persistence
+- **What**: The Search Bar in the Shop Layout **does not reload** when you navigate between products.
+- **Why**: Next.js (React) sees the Layout as the same component instance. It only swaps the `children` (the page content).
+- **Files**: [app/(shop)/layout.tsx](<./app/(shop)/layout.tsx>)
 
-- **What**: We created a Shop Layout that keeps the search bar text alive while navigating.
-- **How**: Created `app/(shop)/layout.tsx` wrapping the products.
-- **Deep Dive**:
-  - **The React Tree**: When you navigate from `/products` to `/products/iphone`, Next.js compares the component tree.
-  - **Scenario 1 (Using Layouts)**: `ShopLayout` stays at the top. React sees it's the _same component instance_. It **keeps it alive** (does not unmount). Only the `children` (page) inside it change. **State (input text) is saved.**
-  - **Scenario 2 (Using Child Component)**: If you just added `<Header>` inside every `page.tsx`, React sees: `PageA -> Header` vs `PageB -> Header`. Since `PageA` is destroyed to make room for `PageB`, the `Header` inside it is _also_ destroyed and re-created. **State (input text) is lost.**
-  - **Verdict**: You _must_ use Layouts if you want state to survive navigation.
+### 3. Dynamic Routes `[slug]`
 
-### 4. Dynamic Routes `[slug]`
+> **Angular Equivalent**: Routes with parameters like `{ path: 'products/:id', component: ProductDetail }`.
 
-- **What**: We built a single page that handles infinite product variations.
-- **How**: Created folder `[slug]` and used `await params`.
-- **Deep Dive**:
-  - `[slug]` is a wildcard. It matches `/products/1`, `/products/abc`, etc.
-  - **Async Params**: In Next.js 15, route parameters are asynchronous promises. You cannot access `params.slug` directly; you must `await params` first.
-  - **Why it matters**: This aligns with the future of React where data dependencies (even URL params) might need to be awaited before rendering, allowing for more concurrent capabilities.
+- **What**: A single page that loads dynamic data based on the URL.
+- **How**: We use `await params` to get the slug.
+- **Files**: [app/(shop)/products/[slug]/page.tsx](<./app/(shop)/products/[slug]/page.tsx>)
 
-### 5. Server vs Client Components
+### 4. Active Links & Search Params
 
-- **Concept**:
-  - **Server Components (`page.tsx`)**: Run _only_ on the server. They have zero JavaScript bundle size for the browser. They can read databases directly.
-  - **Client Components (`NavBar.tsx`)**: Opt-in with `'use client'`. They are sent to the browser and can use state (`useState`) and effects (`useEffect`).
-  - **Why it matters**: Performance. We default to Server Components for content (text, images) to be fast/SEO-friendly, and only use Client Components for interactivity (clicks, navigation hooks).
+> **Angular Equivalent**: `routerLinkActive` directive.
+
+- **What**: Styling links based on the current URL (e.g., highlighting the active tab).
+- **How**:
+  - Use `usePathname()` hook to get the current path.
+  - Use `searchParams` to read query strings like `?sort=price`.
+- **Files**:
+  - [components/NavBar.tsx](./components/NavBar.tsx) (Active path styling)
+  - [app/(shop)/products/page.tsx](<./app/(shop)/products/page.tsx>) (Search params for sorting)
+- **Code Example**:
+
+```tsx
+"use client";
+import { usePathname } from "next/navigation";
+
+function NavBar() {
+  const pathname = usePathname();
+  return (
+    <Link href="/products" className={pathname === "/products" ? "active" : ""}>
+      Products
+    </Link>
+  );
+}
+```
+
+---
+
+## Day 2: Advanced Features (The "Deep Dive")
+
+### 1. Server vs Client Components
+
+### 2. Metadata (SEO)
+
+> **Angular Equivalent**: `Title` and `Meta` services injected in a component.
+
+- **What**: We set the `<title>` logic dynamically based on the product name.
+- **Deep Dive**: In Next.js, we export a `generateMetadata` function. This runs on the server BEFORE the page renders, ensuring perfect SEO (which Angular SPA struggles with).
+- **Server Components Only**: Metadata exports (`metadata` object or `generateMetadata` function) ONLY work in Server Components. If you need dynamic titles in a Client Component, you must:
+  1. Pass the title as a prop from a parent Server Component, OR
+  2. Use the `<title>` tag directly in the Client Component (but this hurts SEO).
+- **Files**: See `generateMetadata` in [app/(shop)/products/[slug]/page.tsx](<./app/(shop)/products/[slug]/page.tsx>)
+- **How to Verify**:
+  1. Go to the Home Page -> Tab Title: "Welcome to NextStore".
+  2. Click a product (e.g., iPhone) -> Tab Title: "iPhone 15 Pro | NextStore".
+
+### 2. Loading UI (Suspense)
+
+> **Angular Equivalent**: `*ngIf="isLoading"` with a `<spinner>` component.
+
+- **What**: A Skeleton Screen that appears automatically while data fetches.
+- **The Magic**: We **DO NOT** write `if (loading)` logic. We just create a file named `loading.tsx`. Next.js does the rest.
+- **Files**: [app/(shop)/products/loading.tsx](<./app/(shop)/products/loading.tsx>)
+- **How to Verify**:
+  1. We added a 2-second artificial delay in `ProductList`.
+  2. Refresh `/products`.
+  3. You will see the Skeleton UI Pulse for 2 seconds before content loads.
+
+### 3. Error Handling
+
+> **Angular Equivalent**: Global ErrorHandler or `catchError` pipe in Observables.
+
+- **What**: A custom error UI ("Something went wrong") with a "Try Again" button.
+- **The Magic**: We just create `error.tsx`. It acts like a "catch" block for the entire page.
+- **Concept: Not Found (404) vs Error (500)**
+  - **notFound()**: Used when the user asks for something that _doesn't exist_ (e.g., product ID 9999). This is intentional and expected. Renders `not-found.tsx`.
+  - **Error (throw)**: Used when the _system breaks_ (e.g., database connection failed, code bug). This is unexpected. Renders `error.tsx`.
+  - **Why separate?**: You don't want to show a "Try Again" button for a missing product (it won't appear magically). You want to show "Go back home".
+- **Files**: [app/(shop)/products/[slug]/error.tsx](<./app/(shop)/products/[slug]/error.tsx>)
+- **How to Verify**:
+  1. Go to any product page (e.g., `/products/iphone`).
+  2. Add `?error=true` to the URL -> `/products/iphone?error=true`.
+  3. You will see the Red Error UI.
+  4. Click "Try Again". It will try to re-render. If the URL still has `?error=true`, it will fail again. Remove it to recover.
+
+### 4. Templates vs Layouts
+
+> **Angular Equivalent**: Components that re-initialize on every route change (no `OnPush` strategy).
+
+- **What**: A `template.tsx` file that wraps pages but **re-mounts on every navigation**.
+- **Difference from Layout**:
+  - **Layout**: Persists across navigation (state survives).
+  - **Template**: Destroys and recreates on every navigation (state resets).
+- **Use Cases**:
+  - Enter/exit animations (Framer Motion)
+  - Logging page views (`useEffect` runs every time)
+  - Resetting form state per page
+- **Files**: [app/(shop)/template.tsx](<./app/(shop)/template.tsx>)
+- **How to Verify**:
+  1. Open browser console.
+  2. Navigate between `/products` and a product detail.
+  3. You'll see "Template mounted!" log on every navigation.
+
+### 5. Programmatic Navigation
+
+> **Angular Equivalent**: `this.router.navigate(['/path'])`
+
+- **What**: Navigate using code instead of `<Link>` tags.
+- **When to Use**: After form submission, conditional redirects, or timed navigation.
+- **How**: Use the `useRouter()` hook from `next/navigation`.
+- **Files**: [components/BuyButton.tsx](./components/BuyButton.tsx)
+- **Code Example**:
+
+```tsx
+"use client";
+import { useRouter } from "next/navigation";
+
+function MyComponent() {
+  const router = useRouter();
+
+  const handleClick = () => {
+    // Do some logic
+    router.push("/products"); // Navigate!
+  };
+}
+```
+
+- **How to Verify**:
+  1. Go to any product detail page.
+  2. Click the "Buy Now" button.
+  3. You'll see an alert, then navigate to home.
+
+### 6. Parallel & Intercepting Routes (The "Instagram Modal")
+
+> **Angular Equivalent**: Complex routing configurations with named outlets (`<router-outlet name="modal">`) or a global Dialog Service.
+
+- **What**: Clicking a product opens a Modal. Refreshing the page opens the Full Page.
+- **Why**:
+  - **Context (Click)**: Keep the list visible behind the modal (don't lose scroll position).
+  - **Shareability (Refresh)**: Direct link should show the full page (no context needed).
+- **How It Works**:
+  1.  **Parallel Route (`@modal`)**: A "slot" that renders alongside the main page.
+  2.  **Intercepting Route (`(.)products`)**: "Steals" navigation when you click a link (soft nav).
+  3.  **Soft Nav** (click Link) → Renders in `@modal` slot → Modal appears.
+  4.  **Hard Nav** (refresh) → Renders normal route → Full page appears.
+- **Files**:
+  - [app/(shop)/layout.tsx](<./app/(shop)/layout.tsx>) (Renders the `@modal` slot)
+  - [app/(shop)/@modal/(.)products/[slug]/page.tsx](<./app/(shop)/@modal/(.)products/[slug]/page.tsx>) (The intercepting modal)
+  - [components/Modal.tsx](./components/Modal.tsx) (The UI wrapper)
+- **How to Verify (The "Instagram Effect")**:
+  1. **Soft Nav**: Go to `/products`. Click a product. It opens in a **Modal**. (Background is still the list).
+  2. **Hard Nav**: Refresh the page. The Modal disappears, and you are on the **Full Detail Page**.
+
+> **📖 Deep Dive**: This is the most complex routing pattern. For a complete step-by-step explanation with diagrams and technical details, see [PARALLEL_ROUTES_EXPLAINED.md](./PARALLEL_ROUTES_EXPLAINED.md).
+
+#### Bonus: Conditional Routes & Unmatched Routes
+
+- **What**: Using `default.tsx` to handle "unmatched" parallel route slots.
+- **Why**: When you refresh a page, the URL might not match the intercepting route. `default.tsx` acts as a fallback.
+- **Example**: `/products/iphone` on refresh doesn't match `@modal/(.)products/iphone`, so `@modal/default.tsx` renders (returns `null`).
+- **Files**: [app/(shop)/@modal/default.tsx](<./app/(shop)/@modal/default.tsx>)
+- **Concept**: This IS "conditional routing" - the route conditionally renders based on navigation type.
+
+### 7. API Routes (Route Handlers)
+
+> **Angular Equivalent**: You usually need a separate backend (NestJS, Express).
+
+- **What**: Next.js allows you to write backend API endpoints inside the frontend project.
+- **How**: Create a `route.ts` file and export HTTP method functions (`GET`, `POST`, etc.).
+- **Files**: [app/api/products/route.ts](./app/api/products/route.ts)
+- **How to Verify**: Visit `http://localhost:3000/api/products` in your browser. You'll see JSON data.

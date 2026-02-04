@@ -194,3 +194,161 @@ function MyComponent() {
 - **How**: Create a `route.ts` file and export HTTP method functions (`GET`, `POST`, etc.).
 - **Files**: [app/api/products/route.ts](./app/api/products/route.ts)
 - **How to Verify**: Visit `http://localhost:3000/api/products` in your browser. You'll see JSON data.
+
+---
+
+## Day 3: Route Handlers & Middleware (Building a REST API)
+
+**Goal**: Learn how to build backend API endpoints directly in Next.js.
+
+### 1. HTTP Methods (CRUD Operations)
+
+> **Angular Equivalent**: NestJS Controllers with `@Get()`, `@Post()`, `@Patch()`, `@Delete()` decorators.
+
+- **What**: Route Handlers let you create API endpoints by exporting functions named after HTTP methods.
+- **File Pattern**: `app/api/[route]/route.ts`
+- **Methods Implemented**:
+  - **GET**: Fetch data (with query params support)
+  - **POST**: Create new resources
+  - **PATCH**: Update existing resources
+  - **DELETE**: Remove resources
+- **Files**:
+  - [app/api/products/route.ts](./app/api/products/route.ts) - GET (list), POST (create)
+  - [app/api/products/[id]/route.ts](./app/api/products/[id]/route.ts) - GET (single), PATCH, DELETE
+- **How to Verify**:
+  1. **GET**: Visit `http://localhost:3000/api/products`
+  2. **GET with params**: `http://localhost:3000/api/products?search=iphone`
+  3. **POST**: Use Thunder Client/Postman to POST to `/api/products` with JSON body:
+     ```json
+     {
+       "name": "New Product",
+       "price": 999,
+       "description": "Test product"
+     }
+     ```
+
+### 2. Dynamic Route Handlers
+
+> **Angular Equivalent**: Route parameters like `@Param('id')` in NestJS.
+
+- **What**: Use `[id]` folder to create dynamic API routes.
+- **Pattern**: `/api/products/[id]` matches `/api/products/123`
+- **How**: Access via `params.id` (must await params)
+- **Files**: [app/api/products/[id]/route.ts](./app/api/products/[id]/route.ts)
+- **How to Verify**:
+  - GET: `http://localhost:3000/api/products/1`
+  - PATCH: Use Thunder Client to PATCH `/api/products/1` with `{"price": 1299}`
+  - DELETE: Send DELETE request to `/api/products/1`
+
+### 3. Headers
+
+> **Angular Equivalent**: `@Headers()` decorator in NestJS or `HttpHeaders` in Angular HttpClient.
+
+- **What**: Read request headers and set custom response headers.
+- **Use Cases**: API versioning, CORS, authentication tokens.
+- **Files**: [app/api/headers/route.ts](./app/api/headers/route.ts)
+- **Code Example**:
+
+```tsx
+// Reading
+const userAgent = request.headers.get("user-agent");
+
+// Setting
+response.headers.set("X-API-Version", "1.0");
+```
+
+- **How to Verify**: Visit `/api/headers` and check Network tab → Headers in DevTools.
+
+### 4. Cookies
+
+> **Angular Equivalent**: Cookie services or `document.cookie` (but server-side here).
+
+- **What**: Read and set HTTP cookies from API routes.
+- **Use Cases**: Session management, user preferences, tracking.
+- **Files**: [app/api/cookies/route.ts](./app/api/cookies/route.ts)
+- **Code Example**:
+
+```tsx
+// Reading
+const cookieStore = await cookies();
+const pref = cookieStore.get("user-preference");
+
+// Setting
+response.cookies.set("session-id", "abc123", {
+  httpOnly: true,
+  maxAge: 3600,
+});
+```
+
+- **How to Verify**:
+  1. Visit `/api/cookies`
+  2. Check Application tab → Cookies in DevTools
+  3. Visit `/api/cookies` again to see cookies being read
+
+### 5. Redirects
+
+> **Angular Equivalent**: `this.router.navigate()` but from the server.
+
+- **What**: Redirect users to different URLs from an API route.
+- **Use Cases**: Short URLs, auth flows, legacy route handling.
+- **Files**: [app/api/redirect/route.ts](./app/api/redirect/route.ts)
+- **How to Verify**: Visit `/api/redirect?target=products` → redirects to `/products`
+
+### 6. Caching
+
+> **Angular Equivalent**: HTTP caching headers or `shareReplay()` in RxJS.
+
+- **What**: Control how Next.js caches route handler responses.
+- **Strategies**:
+  - `force-static`: Cache forever (default)
+  - `force-dynamic`: Never cache (re-run every request)
+  - `revalidate: 60`: Cache for 60 seconds, then regenerate
+- **Files**: [app/api/cache/route.ts](./app/api/cache/route.ts)
+- **How to Verify**:
+  1. Visit `/api/cache` multiple times
+  2. Check if timestamp changes (it will, because we use `force-dynamic`)
+
+### 7. Middleware
+
+> **Angular Equivalent**: HTTP Interceptors.
+
+- **What**: Code that runs BEFORE every request (pages + API routes).
+- **Use Cases**: Logging, authentication, redirects, adding headers.
+- **File**: [middleware.ts](./middleware.ts) (root level)
+- **How It Works**:
+  1. Every request hits middleware first
+  2. Middleware can modify request/response or redirect
+  3. Then request continues to the actual route
+- **Code Example**:
+
+```tsx
+export function middleware(request: NextRequest) {
+  console.log(`${request.method} ${request.url}`);
+  const response = NextResponse.next();
+  response.headers.set("X-Custom-Header", "value");
+  return response;
+}
+```
+
+- **How to Verify**:
+  1. Check terminal logs when navigating
+  2. Check Network tab → any request → Response Headers for `X-Middleware-Applied`
+
+---
+
+## Day 3 Summary
+
+**What We Built:**
+
+- Complete REST API for products (CRUD)
+- Dynamic API routes
+- Header/Cookie/Redirect handling
+- Caching strategies
+- Request interception via Middleware
+
+**Key Concepts:**
+
+- Route Handlers = Backend endpoints in Next.js
+- `NextRequest` = Request object (like Express `req`)
+- `NextResponse` = Response object (like Express `res`)
+- Middleware = Global request interceptor
